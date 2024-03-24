@@ -1,54 +1,63 @@
 ﻿@model Auctions.Models.Listing
+@using Microsoft.AspNetCore.Identity;
+@inject UserManager<IdentityUser> userManager
 
 @{
     ViewData["Title"] = "Details";
 }
 
-<h1>Details</h1>
+@if (User.Identity.IsAuthenticated)
+{
+    @if (Model.IsSold == true)
+    {
+        @foreach (var bid in Model.Bids)
+        {
+            @if(bid.Price == Model.Price)
+            {
+                if (bid.IdentityUserId == userManager.GetUserId(User))
+                {
+                    <h5>Congratulations! You are the winner.</h5>
+                }
+                else if (userManager.GetUserId(User) == Model.IdentityUserId)
+                {
+                    <h5>@bid.User.UserName is the winner.</h5>
+                }
+                else
+                {
+                    <h5>Bidding is closed!</h5>
+                }
+            }
+        }
+    }
+}
 
-<div>
-    <h4>Listing</h4>
-    <hr />
-    <dl class="row">
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Title)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Title)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Description)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Description)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Price)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Price)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.ImagePath)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.ImagePath)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.IsSold)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.IsSold)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.IdentityUserId)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.IdentityUserId)
-        </dd>
-    </dl>
+<h4 style="text-align:center">@Model.Title</h4>
+<div class="container" style="background-color:rgba(130,130,130,0.6; margin-top: 50px; margin-bottom: 50px; padding: 20px; border-radius: 10px">
+    <div class="col col-xs-6 col-lg-5">
+        <img src="~/Images/@Model.ImagePath" style="width: 100%; max-height: 60vh;" />
+    </div>
+    <div class="col col-xs-6 col-lg-7">
+        <div>@Model.Description</div>
+        @if (User.Identity.IsAuthenticated)
+        {
+            <form asp-action="AddBid" method="post">
+                <div>
+                    Bid: $ <input type="number" min = "@Model.Price" step="1" name="Price" placeholder="@Model.Price.ToString("N2")"/>
+                    <input type="hidden" name="IdentityUserId" class="form-control" value="@userManager.GetUserId(User)"/>
+                    <input type="hidden" name="ListingId" class="form-control" value="@Model.Id" />
+                    <input type="submit" class="btn btn-primary">
+                </div>
+            </form>
+            <p>Bids submitted: @Model.Bids.Count</p>
+            <br>
+            @if(userManager.GetUserId(User) == Model.User.Id)
+            {
+                @foreach(var bid in Model.Bids)
+                {
+                    
+                }
+            }
+        }
+    </div>
 </div>
-<div>
-    <a asp-action="Edit" asp-route-id="@Model?.Id">Edit</a> |
-    <a asp-action="Index">Back to List</a>
-</div>
+

@@ -8,15 +8,20 @@ using Microsoft.EntityFrameworkCore;
 using Auctions.Data;
 using Auctions.Models;
 using Auctions.Data.Services.Abstract;
+using Auctions.Models.VMs;
+using System.Runtime.CompilerServices;
 
 namespace Auctions.Controllers
 {
     public class ListingsController : Controller
     {
         private readonly IListingService _listingService;
-        public ListingsController(IListingService listingService)
+        private readonly IWebHostEnvironment _webHostEnvironment;
+
+        public ListingsController(IListingService listingService, IWebHostEnvironment webHostEnvironment)
         {
             _listingService = listingService;
+            _webHostEnvironment = webHostEnvironment;
         }
 
         // GET: Listings
@@ -27,45 +32,59 @@ namespace Auctions.Controllers
                           //Problem("Entity set 'ApplicationDbContext.Listings'  is null.");
         }
 
-        //// GET: Listings/Details/5
-        //public async Task<IActionResult> Details(int? id)
-        //{
-        //    if (id == null || _context.Listings == null)
-        //    {
-        //        return NotFound();
-        //    }
+        // GET: Listings/Details/5
+        public async Task<IActionResult> Details(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
 
-        //    var listing = await _context.Listings
-        //        .FirstOrDefaultAsync(m => m.Id == id);
-        //    if (listing == null)
-        //    {
-        //        return NotFound();
-        //    }
+            var listing =  await _listingService.GetById(id);
+            if (listing == null)
+            {
+                return NotFound();
+            }
 
-        //    return View(listing);
-        //}
+            return View(listing);
+        }
 
-        //// GET: Listings/Create
-        //public IActionResult Create()
-        //{
-        //    return View();
-        //}
+        // GET: Listings/Create
+        public IActionResult Create()
+        {
+            return View();
+        }
 
-        //// POST: Listings/Create
-        //// To protect from overposting attacks, enable the specific properties you want to bind to.
-        //// For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
-        //[HttpPost]
-        //[ValidateAntiForgeryToken]
-        //public async Task<IActionResult> Create([Bind("Id,Title,Description,Price,ImagePath,IsSold,IdentityUserId")] Listing listing)
-        //{
-        //    if (ModelState.IsValid)
-        //    {
-        //        _context.Add(listing);
-        //        await _context.SaveChangesAsync();
-        //        return RedirectToAction(nameof(Index));
-        //    }
-        //    return View(listing);
-        //}
+        // POST: Listings/Create
+        // To protect from overposting attacks, enable the specific properties you want to bind to.
+        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(ListingVM listingVM)
+        {
+            if (listingVM.Image != null)
+            {
+                string uploadDirectory = Path.Combine(_webHostEnvironment.WebRootPath, "Images");
+                string fileName = listingVM.Image.FileName;
+                string filePath = Path.Combine(uploadDirectory, fileName);
+                using (var filestream = new FileStream(filePath, FileMode.Create))
+                {
+                    listingVM.Image.CopyTo(filestream);
+                }
+
+                var listing = new Listing
+                {
+                    Title = listingVM.Title,
+                    Description = listingVM.Description,
+                    Price = listingVM.Price,
+                    IdentityUserId = listingVM.IdentityUserId,
+                    ImagePath = filePath,
+                };
+                await _listingService.Add(listing);
+                return RedirectToAction("Index");
+            }
+            return View(listingVM);
+        }
 
         //// GET: Listings/Edit/5
         //public async Task<IActionResult> Edit(int? id)
@@ -150,7 +169,7 @@ namespace Auctions.Controllers
         //    {
         //        _context.Listings.Remove(listing);
         //    }
-            
+
         //    await _context.SaveChangesAsync();
         //    return RedirectToAction(nameof(Index));
         //}
