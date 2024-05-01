@@ -10,6 +10,7 @@ using Auctions.Models;
 using Auctions.Data.Services.Abstract;
 using Auctions.Models.VMs;
 using System.Runtime.CompilerServices;
+using System.Security.Claims;
 
 namespace Auctions.Controllers
 {
@@ -17,12 +18,17 @@ namespace Auctions.Controllers
     {
         private readonly IListingService _listingService;
         private readonly IBidService _bidService;
+        private readonly ICommentService _commentService;
         private readonly IWebHostEnvironment _webHostEnvironment;
 
-        public ListingsController(IListingService listingService, IWebHostEnvironment webHostEnvironment, IBidService bidService)
+        public ListingsController(IListingService listingService, 
+                                IWebHostEnvironment webHostEnvironment, 
+                                IBidService bidService,
+                                ICommentService commentService)
         {
             _listingService = listingService;
             _bidService = bidService;
+            _commentService = commentService;
             _webHostEnvironment = webHostEnvironment;
         }
 
@@ -39,6 +45,24 @@ namespace Auctions.Controllers
 
             return View(await PaginatedList<Listing>.CreateAsync(result/*.Where(x => x.IsSold == false)*/.AsNoTracking(), pageNumber ?? 1, pageSize));
                           
+        }
+        public async Task<IActionResult> MyListings(int? pageNumber)
+        {
+            var result = _listingService.GetAll();
+            int pageSize = 3;
+           
+
+            return View("Index", await PaginatedList<Listing>.CreateAsync(result.Where(x => x.IdentityUserId == User.FindFirstValue(ClaimTypes.NameIdentifier)).AsNoTracking(), pageNumber ?? 1, pageSize));
+
+        }
+        public async Task<IActionResult> MyBids(int? pageNumber)
+        {
+            var result = _bidService.GetAll();
+            int pageSize = 3;
+
+
+            return View(await PaginatedList<Bid>.CreateAsync(result.Where(x => x.IdentityUserId == User.FindFirstValue(ClaimTypes.NameIdentifier)).AsNoTracking(), pageNumber ?? 1, pageSize));
+
         }
 
         // GET: Listings/Details/5
@@ -114,6 +138,17 @@ namespace Auctions.Controllers
             var listing = await _listingService.GetById(id);
             listing.IsSold = true;
             await _listingService.SaveChanges();
+            return View("Details", listing);
+        }
+
+        [HttpPost]
+        public async Task<ActionResult> AddComment([Bind("Id, Content, ListingId, IdentityUserId")] Comment comment)
+        {
+            if (ModelState.IsValid)
+            {
+                await _commentService.Add(comment);
+            }
+            var listing = await _listingService.GetById(comment.ListingId);
             return View("Details", listing);
         }
         //// GET: Listings/Edit/5
